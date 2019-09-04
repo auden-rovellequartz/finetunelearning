@@ -11914,3 +11914,109 @@ success!
 success!
 success!
 success!
+success!
+success!
+success!
+timestamp: 2019-09-03T03:32:25.040000
+ALTER TABLE "classrooms" ADD "course_status" CHAR(512);
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+DELETE FROM "id_refs";
+DELETE FROM sqlite_sequence WHERE name='id_refs'
+success!
+DELETE FROM "teachers";
+DELETE FROM sqlite_sequence WHERE name='teachers'
+success!
+DELETE FROM "students";
+DELETE FROM sqlite_sequence WHERE name='students'
+success!
+DELETE FROM "classrooms";
+DELETE FROM sqlite_sequence WHERE name='classrooms'
+success!
+DELETE FROM "quiz_contents";
+DELETE FROM sqlite_sequence WHERE name='quiz_contents'
+success!
+DELETE FROM "quizzes_unassigned";
+DELETE FROM sqlite_sequence WHERE name='quizzes_unassigned'
+success!
+DELETE FROM "quizzes_assigned";
+DELETE FROM sqlite_sequence WHERE name='quizzes_assigned'
+success!
+DELETE FROM "quiz_grades";
+DELETE FROM sqlite_sequence WHERE name='quiz_grades'
+success!
+DELETE FROM "quizzes_in_progress";
+DELETE FROM sqlite_sequence WHERE name='quizzes_in_progress'
+success!
+DELETE FROM "quizzes_submitted";
+DELETE FROM sqlite_sequence WHERE name='quizzes_submitted'
+success!
+DELETE FROM "total_grades";
+DELETE FROM sqlite_sequence WHERE name='total_grades'
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!
+success!

@@ -1,12 +1,10 @@
 """
-< 6:00am
 
 temp notepad
 
 
 >>>>>>>>>>>>>>>
-[] a teacher should be able to close out the term
-[] when a teacher closes out a term all quizzes for that teacher's class shall automatically transition to "submitted" status and shall be graded
+
 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 [] a student shall be able to see their current cumulative grade from submitted quizzes
@@ -25,13 +23,19 @@ from (assigned = FALSE) to (assigned = TRUE)
 
 [] make student drop class more robust
 
-[] we should enforce unique record entry for student and teacher records
+
 **************************************************************************
 
 
 =================================================================================
 
-[DONE] add capability for teacher to see summary list of student grades per quiz    < 3:15am
+[DONE] we should enforce unique record entry for student and teacher records
+[DONE] "Admin View" lower left link should only be visible with login type is None
+
+[DONE] a teacher should be able to close out the term
+[DONE] when a teacher closes out a term all unsubmitted quizzes for that teacher's class shall automatically transition to "submitted" status and shall be graded
+
+[DONE] add capability for teacher to see summary list of student grades per quiz    
 [DONE] add capability for teacher to see detailed results of a quiz for any student
 
 [DONE] a student shall be able to see their current cumulative grade from submitted quizzes

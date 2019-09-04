@@ -44,7 +44,7 @@
     {{block footer}}    
     <footer class="footer">
       <div class="container-fluid">
-        <div class="copyright pull-left"><a href={{= URL(a = "school", c = "default", f = "admin_login")}}>Admin View</a></div>
+        <div class="copyright pull-left">{{= session.admin_login}}</a></div>
           <div id="poweredBy" class="pull-right">
             A Job Application Coding Challenge by 
             <a href="https://finetunelearning.com/" target="_blank" >FineTune Learning</a>

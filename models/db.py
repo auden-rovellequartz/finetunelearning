@@ -56,6 +56,7 @@ db.define_table("classrooms",
 	Field("name"),
 	Field("student_id", default = "NONE_ENROLLED"),
 	Field("teacher_id"),
+	Field("course_status", default = "COURSE_IN_PROGRESS"),
 	migrate = MIGRATE_SETTING
 	)
 db.define_table("quiz_contents", 

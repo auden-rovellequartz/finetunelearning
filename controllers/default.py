@@ -8,6 +8,8 @@ def add_student():
 	form = "NO CLASSES AVAILABLE"
 	classrooms_rows = db(
 		(db.classrooms.id > 0)
+		&
+		(db.classrooms.course_status == "COURSE_IN_PROGRESS")
 		).select(
 			db.classrooms.class_id, 
 			db.classrooms.name, 
@@ -17,7 +19,11 @@ def add_student():
 	available_classes_list = []
 	current_classes_list = []
 	if (len(classrooms_rows) > 0):
-		classrooms_rows_01 = db(db.classrooms.student_id == session.student_id).select()
+		classrooms_rows_01 = db(
+			(db.classrooms.student_id == session.student_id)
+			&
+			(db.classrooms.course_status == "COURSE_IN_PROGRESS")
+			).select()
 		for x in classrooms_rows_01:
 			current_classes_list.append(x.class_id + ": " + x.name)
 		for x in classrooms_rows:
@@ -145,7 +151,10 @@ def add_question_to_quiz():
 				_name = "points",
 				_autocomplete = "off",
 				_style = "width:400px",
-				requires = IS_NOT_EMPTY(error_message = "specify a points value")
+				requires = [
+					IS_NOT_EMPTY(error_message = "specify a points value"),
+					IS_INT_IN_RANGE(1, 1001),
+					]
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -303,6 +312,8 @@ def admin_login():
 			INPUT(
 				_type = "text",
 				_name = "admin_key",
+				_autocomplete = "off",
+				requires = IS_NOT_EMPTY()
 				),
 			),
 		DIV(
@@ -343,6 +354,7 @@ def create_classroom():
 				_type = "text",
 				_name = "name",
 				_style = "width:400px",
+				requires = IS_NOT_EMPTY()
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -410,7 +422,10 @@ def create_quiz():
 				_name = "points",
 				_autocomplete = "off",
 				_style = "width:400px",
-				requires = IS_NOT_EMPTY(error_message = "specify a points value")
+				requires = [
+					IS_NOT_EMPTY(error_message = "specify a points value"),
+					IS_INT_IN_RANGE(1, 1001),
+					]
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -797,12 +812,12 @@ def quiz_submit_authentication():
 		students_rows = db().select(db.students.ALL)
 		for x in students_rows:
 			if (form.vars.portal_pswd == x.portal_pswd):
+				grade_quiz(quiz_id, session.student_id)
 				redirect(
 					URL(
 						a = "school",
 						c = "default",
-						f = "grade_quiz",
-						vars = dict(quiz_id = quiz_id)
+						f = "student_dashboard",
 						)
 					)
 		system_error("incorrect quiz submittal credentials!")
@@ -824,6 +839,7 @@ def register_student():
 			INPUT(
 				_type = "text",
 				_name = "name",
+				_autocomplete = "off",
 				_style = "width:400px",
 				),
 			_align = "right",
@@ -855,6 +871,7 @@ def register_student():
 				_type = "text",
 				_name = "portal_pswd",
 				_style = "width:400px",
+				requires = IS_NOT_EMPTY()
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -893,6 +910,7 @@ def register_teacher():
 			INPUT(
 				_type = "text",
 				_name = "name",
+				_autocomplete = "off",
 				_style = "width:400px",
 				),
 			_align = "right",
@@ -906,9 +924,10 @@ def register_teacher():
 			INPUT(
 				_type = "text",
 				_name = "handle",
+				_autocomplete = "off",
 				_style = "width:400px",
 				requires = [
-					IS_NOT_IN_DB(db, db.students.handle),
+					IS_NOT_IN_DB(db, db.teachers.handle),
 					IS_NOT_EMPTY(),
 					]
 				),
@@ -923,7 +942,9 @@ def register_teacher():
 			INPUT(
 				_type = "text",
 				_name = "portal_pswd",
+				_autocomplete = "off",
 				_style = "width:400px",
+				requires = IS_NOT_EMPTY()
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -993,25 +1014,25 @@ def student_dashboard():
 			),
 		TH(
 			"Course Section ID",
-			_style = "width:250px;height:40px;",
+			_style = "width:250px;height:40px;padding-left:25px",
 			),
 		TH(
 			"Course Status",
-			_style = "width:250px;height:40px;",
+			_style = "width:250px;height:40px;padding-left:25px",
 			),
 		TH(
 			"Cumulative Course Grade",
-			_style = "width:250px;height:40px;",
+			_style = "width:250px;height:40px;padding-left:25px",
 			),
 		)
 	table_header_quizzes = TR(
 		TH(
 			"Quiz Name", 
-			_style = "width:250px;height:40px;",
+			_style = "width:250px;height:40px;padding-left:25px;",
 			),
 		TH(
 			"Quiz ID",
-			_style = "width:250px;height:40px;",
+			_style = "width:250px;height:40px;padding-left:25px;",
 			),
 		)
 	my_courses.append(table_header_courses)
@@ -1040,12 +1061,15 @@ def student_dashboard():
 					),
 				TD(
 					x.class_id,
+					_style = "padding-left:25px",
 					),
 				TD(
 					course_status,
+					_style = "padding-left:25px",
 					),
 				TD(
 					cumulative_grade,
+					_style = "padding-left:25px",
 					),
 				)
 			my_course_list.append(table_row)
@@ -1276,7 +1300,7 @@ def student_quiz_question():
 				DIV(
 					INPUT(
 						_type = "submit",
-						_value = "Login",
+						_value = "Submit Answer to Question",
 						_style = "width:400px",
 						),
 					_align = "right",
@@ -1358,10 +1382,16 @@ def student_quiz():
 	table = TABLE(
 		TR(
 			TH(
-				"Question"
+				"Question",
+				_style = "padding-right:75px;max-width:500px;",
 				),
 			TH(
 				"My Answer",
+				_style = "padding-right:75px;max-width:500px;",
+				),
+			TH(
+				"Points if Correct",
+				_style = "padding-right:75px;",
 				),
 			TH(),
 			)
@@ -1516,10 +1546,14 @@ def student_quiz():
 			table_row = TR(
 				TD(
 					x.question,
-					_style = "padding-bottom:50px;padding-right:50px;",
+					_style = "padding-bottom:50px;padding-right:50px;max-width:500px;",
 					),
 				TD(
 					my_answer,
+					_style = "padding-bottom:50px;padding-right:50px;max-width:500px;",
+					),
+				TD(
+					x.points,
 					_style = "padding-bottom:50px;padding-right:50px;",
 					),
 				TD(
@@ -1689,6 +1723,18 @@ def students_in_course():
 		(db.classrooms.student_id != "NONE_ENROLLED")
 		).select()
 	if (len(classrooms_rows) > 0):
+		if (classrooms_rows[0].course_status == "COURSE_IN_PROGRESS"):
+			conclude = A(
+				"CONCLUDE THIS COURSE & ISSUE FINAL GRADES",
+				_href = URL(
+					a = "school",
+					c = "default",
+					f = "conclude_course",
+					vars = dict(class_id = class_id)
+					)
+				)
+		else:
+			conclude = "THIS COURSE HAS CONCLUDED, AND FINAL GRADES HAVE BEEN ISSUED"
 		for x in classrooms_rows:
 			students_rows = db(db.students.student_id == x.student_id).select()
 			if (len(students_rows) == 1):
@@ -1732,7 +1778,9 @@ def students_in_course():
 					)
 	else:
 		table = "NO STUDENTS ARE CURRENTLY ENROLLED IN THIS CLASS"
+		conclude = ""
 	return dict(
+		conclude = conclude,
 		home = home,
 		table = table,
 		)
@@ -1910,6 +1958,197 @@ def teacher_login():
 		home = home,
 		form = form,
 		)
+def teacher_quiz():
+	session_manager(request)
+	home = get_home_link()
+	if (session.quiz_id_teacher == None):
+		session.quiz_id_teacher = request.vars.quiz_id
+	quizzes_assigned_rows = db(db.quizzes_assigned.quiz_id == session.quiz_id_teacher).select()
+	quizzes_unassigned_rows = db(db.quizzes_unassigned.quiz_id == session.quiz_id_teacher).select()
+	length_assigned = len(quizzes_assigned_rows)
+	length_unassigned = len(quizzes_unassigned_rows)
+	assign_option_text = ""
+	if ((length_unassigned == 0) and (length_assigned > 0)):
+		quiz_is_assigned = "TRUE"
+		name = quizzes_assigned_rows[0].name
+		assign_form = ""
+		delete_quiz = ""
+		add_question = ""
+		session.quiz_under_development = None
+	elif((length_unassigned == 1) and (length_assigned == 0)):
+		quiz_is_assigned = "FALSE"
+		delete_quiz = A(
+			"DELETE THIS QUIZ",
+			_href = URL(
+				a = "school",
+				c = "default",
+				f = "delete_quiz",
+				vars = dict(
+					quiz_id = session.quiz_id_teacher,
+					),
+				)
+			)	
+		session.quiz_under_development = session.quiz_id_teacher
+		add_question = A(
+			"ADD A QUESTION",
+			_href = URL(
+				a = "school",
+				c = "default",
+				f = "add_question_to_quiz",
+				)
+			)	
+		name = quizzes_unassigned_rows[0].name
+		teacher_classes = [""]
+		teacher_classes_list = []
+		classrooms_rows = db(
+			(db.classrooms.teacher_id == session.teacher_id)
+			&
+			(db.classrooms.course_status == "COURSE_IN_PROGRESS")
+			).select(
+				db.classrooms.class_id, 
+				db.classrooms.name, 
+				distinct = True,
+				)
+		if (len(classrooms_rows) > 0):
+			for x in classrooms_rows:
+				teacher_classes.append(x.class_id + ": " + x.name)
+				teacher_classes_list.append(x.class_id + ": " + x.name)
+				assign_option_text = "YOU HAVE THE OPTION OF ASSIGNING THIS QUIZ TO A CLASSROOM:"
+			assign_form = FORM(
+				DIV(
+					LABEL(
+						"Select a Classroom:",
+						_style = "padding-right:25px",
+						),
+					SELECT(
+						teacher_classes,
+						_name = "teacher_class",
+						_style = "width:400px;height:40px;",
+						requires = [
+							IS_IN_SET(teacher_classes_list),
+							]
+						),
+					_align = "right",
+					_style = "padding-right:400px;height:40px;padding-bottom:70px;",
+					),
+				DIV(
+					LABEL(
+						"Grade Weight Points for this Quiz:",
+						_style = "padding-right:25px",
+						),
+					INPUT(
+						_type = "text",
+						_name = "points",
+						_style = "width:400px;height:40px;",
+						requires = [
+							IS_NOT_EMPTY(),
+							IS_INT_IN_RANGE(1, 1001),
+							]
+						),
+					_align = "right",
+					_style = "padding-right:400px;height:20px;padding-bottom:70px;",
+					),
+				DIV(
+					INPUT(
+						_type = "submit",
+						_value = "Assign this Quiz to a Classroom",
+						_style = "width:400px",
+						),
+					_align = "right",
+					_style = "padding-right:400px;",
+					),
+				)
+			if (assign_form.process().accepted):
+				quizzes_unassigned_rows[0].delete_record()
+				db.commit()
+				db.quizzes_assigned.insert(
+					quiz_id = session.quiz_id_teacher,
+					name = name,
+					teacher_id = session.teacher_id,
+					class_id = assign_form.vars.teacher_class[:8],
+					quiz_points = assign_form.vars.points,
+					)
+				db.commit()
+				classrooms_rows = db(
+					(db.classrooms.class_id == assign_form.vars.teacher_class[:8])
+					).select()
+				quiz_contents_rows = db(
+					(db.quiz_contents.quiz_id == session.quiz_id_teacher)
+					).select()
+				for x in classrooms_rows:
+					if (x.student_id != "NONE_ENROLLED"):
+						for y in quiz_contents_rows:
+							db.quizzes_in_progress.insert(
+								quiz_id = session.quiz_id_teacher,
+								student_id = x.student_id,
+								question_id = y.question_id
+								)
+							db.commit()
+				redirect(
+					URL(
+						a = "school",
+						c = "default",
+						f = "teacher_dashboard",
+						)
+					)
+		else:
+			assign_form = ""
+	else:
+		system_error(
+			"data corruption! - no more than one record should be in db.quizzes_unassigned, "
+			+
+			"and a quiz should be either assigned or unassigned"
+			)
+	table = TABLE(
+		TR(
+			TH(
+				"Question",
+				_style = "padding-right:75px;max-width:500px;",
+				),
+			TH(
+				"Answer Options",
+				_style = "padding-right:75px",
+				),
+			)
+		)
+	quiz_contents_rows = db(db.quiz_contents.quiz_id == session.quiz_id_teacher).select()
+	if (len(quiz_contents_rows) == 0):
+		system_error("data corruption! - it should not be possible for a quiz to have no questions")
+	else:
+		for x in quiz_contents_rows:
+			table_row = TR(
+				TD(
+					x.question,
+					_style = "padding-right:75px;max-width:500px;",
+					),
+				TD(
+					A(
+						x.question_id,
+						_href = URL(
+							a = "school",
+							c = "default",
+							f = "teacher_quiz_question",
+							vars = dict(
+								quiz_id = x.quiz_id,
+								question_id = x.question_id,
+								assigned = quiz_is_assigned,
+								)
+							)
+						),
+					_style = "padding-right:75px",
+					),
+				)
+			table.append(table_row)
+	return dict(
+		add_question = add_question,
+		assign_form = assign_form,
+		assign_option_text = assign_option_text,
+		delete_quiz = delete_quiz,
+		home = home,
+		name = name,
+		quiz_id = session.quiz_id_teacher,
+		table = table,
+		)
 def teacher_quiz_question():
 	session_manager(request)
 	home = get_home_link()
@@ -1931,8 +2170,10 @@ def teacher_quiz_question():
 						_style = "padding-right:25px",
 						),
 					TEXTAREA(
+						quiz_contents_rows[0].question,
 						_name = "question",
-						_placeholder = quiz_contents_rows[0].question,
+						# _value = quiz_contents_rows[0].question,
+						_value = quiz_contents_rows[0].question,
 						_style = "width:400px;height:100px",
 						requires = IS_NOT_EMPTY(error_message = "enter a question")
 						),
@@ -1947,9 +2188,12 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "points",
-						_placeholder = quiz_contents_rows[0].points,
+						_value = quiz_contents_rows[0].points,
 						_style = "width:400px",
-						requires = IS_NOT_EMPTY(error_message = "specify a points value")
+						requires = [
+							IS_NOT_EMPTY(error_message = "specify a points value"),
+							IS_INT_IN_RANGE(1, 1001),
+							]
 						),
 					_align = "right",
 					_style = "padding-right:400px;",
@@ -1962,7 +2206,7 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "option_a",
-						_placeholder = quiz_contents_rows[0].option_a,
+						_value = quiz_contents_rows[0].option_a,
 						_style = "width:400px",
 						requires = IS_NOT_EMPTY(error_message = "specify an option")
 						),
@@ -1977,7 +2221,7 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "option_b",
-						_placeholder = quiz_contents_rows[0].option_b,
+						_value = quiz_contents_rows[0].option_b,
 						_style = "width:400px",
 						requires = IS_NOT_EMPTY(error_message = "specify an option")
 						),
@@ -1992,7 +2236,7 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "option_c",
-						_placeholder = quiz_contents_rows[0].option_c,
+						_value = quiz_contents_rows[0].option_c,
 						_style = "width:400px",
 						requires = IS_NOT_EMPTY(error_message = "specify an option")
 						),
@@ -2007,7 +2251,7 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "option_d",
-						_placeholder = quiz_contents_rows[0].option_d,
+						_value = quiz_contents_rows[0].option_d,
 						_style = "width:400px",
 						requires = IS_NOT_EMPTY(error_message = "specify an option")
 						),
@@ -2022,7 +2266,7 @@ def teacher_quiz_question():
 					INPUT(
 						_type = "text",
 						_name = "option_e",
-						_placeholder = quiz_contents_rows[0].option_e,
+						_value = quiz_contents_rows[0].option_e,
 						_style = "width:400px",
 						requires = IS_NOT_EMPTY(error_message = "specify an option")
 						),
@@ -2068,6 +2312,26 @@ def teacher_quiz_question():
 						),
 					)
 				)	
+			if (table.process().accepted):
+				quiz_contents_rows[0].update_record(
+					question = table.vars.question,
+					points = table.vars.points,
+					option_a = table.vars.option_a,
+					option_b = table.vars.option_b,
+					option_c = table.vars.option_c,
+					option_d = table.vars.option_d,
+					option_e = table.vars.option_e,
+					answer = table.vars.answer,
+					)
+				db.commit()
+				redirect(
+					URL(
+						a = "school",
+						c = "default",
+						f = "teacher_quiz",
+						vars = dict(quiz_id = quiz_id),
+						)
+					)
 	quiz_link = A(
 		"Quiz ID: " + quiz_id,
 		_href = URL(
@@ -2083,181 +2347,11 @@ def teacher_quiz_question():
 		quiz_link = quiz_link,
 		table = table,
 		)
-def teacher_quiz():
-	session_manager(request)
-	home = get_home_link()
-	if (session.quiz_id_teacher == None):
-		session.quiz_id_teacher = request.vars.quiz_id
-	quizzes_assigned_rows = db(db.quizzes_assigned.quiz_id == session.quiz_id_teacher).select()
-	quizzes_unassigned_rows = db(db.quizzes_unassigned.quiz_id == session.quiz_id_teacher).select()
-	length_assigned = len(quizzes_assigned_rows)
-	length_unassigned = len(quizzes_unassigned_rows)
-	if ((length_unassigned == 0) and (length_assigned > 0)):
-		quiz_is_assigned = "TRUE"
-		name = quizzes_assigned_rows[0].name
-		assign_form = ""
-		delete_quiz = ""
-		add_question = ""
-		session.quiz_under_development = None
-	elif((length_unassigned == 1) and (length_assigned == 0)):
-		quiz_is_assigned = "FALSE"
-		delete_quiz = A(
-			"DELETE THIS QUIZ",
-			_href = URL(
-				a = "school",
-				c = "default",
-				f = "delete_quiz",
-				vars = dict(
-					quiz_id = session.quiz_id_teacher,
-					),
-				)
-			)	
-		session.quiz_under_development = session.quiz_id_teacher
-		add_question = A(
-			"ADD A QUESTION",
-			_href = URL(
-				a = "school",
-				c = "default",
-				f = "add_question_to_quiz",
-				)
-			)	
-		name = quizzes_unassigned_rows[0].name
-		teacher_classes = [""]
-		teacher_classes_list = []
-		classrooms_rows = db(
-			(db.classrooms.teacher_id == session.teacher_id)
-			).select(
-				db.classrooms.class_id, 
-				db.classrooms.name, 
-				distinct = True,
-				)
-		if (len(classrooms_rows) > 0):
-			for x in classrooms_rows:
-				teacher_classes.append(x.class_id + ": " + x.name)
-				teacher_classes_list.append(x.class_id + ": " + x.name)
-			assign_form = FORM(
-				DIV(
-					"Select a Classroom",
-					_style = "padding-left:400px;height:20px;padding-bottom:25px;",
-					),
-				DIV(
-					SELECT(
-						teacher_classes,
-						_name = "teacher_class",
-						_style = "width:400px;height:40px;",
-						requires = [
-							IS_IN_SET(teacher_classes_list),
-							]
-						),
-					_align = "right",
-					_style = "padding-right:400px;height:20px;padding-bottom:70px;",
-					),
-				DIV(
-					"Specify Grade Weight Points for this Quiz",
-					_style = "padding-left:550px;height:20px;padding-bottom:25px;",
-					),
-				DIV(
-					INPUT(
-						_type = "text",
-						_name = "points",
-						_style = "width:400px;height:40px;",
-						requires = IS_NOT_EMPTY(),
-						),
-					_align = "right",
-					_style = "padding-right:400px;height:20px;padding-bottom:70px;",
-					),
-				DIV(
-					INPUT(
-						_type = "submit",
-						_value = "Assign this Quiz to a Classroom",
-						_style = "width:400px",
-						),
-					_align = "right",
-					_style = "padding-right:400px;",
-					),
-				)
-			if (assign_form.process().accepted):
-				quizzes_unassigned_rows[0].delete_record()
-				db.commit()
-				db.quizzes_assigned.insert(
-					quiz_id = session.quiz_id_teacher,
-					name = name,
-					teacher_id = session.teacher_id,
-					class_id = assign_form.vars.teacher_class[:8],
-					quiz_points = assign_form.vars.points,
-					)
-				db.commit()
-				classrooms_rows = db(
-					(db.classrooms.class_id == assign_form.vars.teacher_class[:8])
-					).select()
-				quiz_contents_rows = db(
-					(db.quiz_contents.quiz_id == session.quiz_id_teacher)
-					).select()
-				for x in classrooms_rows:
-					if (x.student_id != "NONE_ENROLLED"):
-						for y in quiz_contents_rows:
-							db.quizzes_in_progress.insert(
-								quiz_id = session.quiz_id_teacher,
-								student_id = x.student_id,
-								question_id = y.question_id
-								)
-							db.commit()
-		else:
-			assign_form = ""
-	else:
-		system_error(
-			"data corruption! - no more than one record should be in db.quizzes_unassigned, "
-			+
-			"and a quiz should be either assigned or unassigned"
-			)
-	table = TABLE(
-		TR(
-			TH(
-				"Question"
-				),
-			TH(
-				"View Answer Options"
-				),
-			)
-		)
-	quiz_contents_rows = db(db.quiz_contents.quiz_id == session.quiz_id_teacher).select()
-	if (len(quiz_contents_rows) == 0):
-		system_error("data corruption! - it should not be possible for a quiz to have no questions")
-	else:
-		for x in quiz_contents_rows:
-			table_row = TR(
-				TD(
-					x.question,
-					),
-				TD(
-					A(
-						x.question_id,
-						_href = URL(
-							a = "school",
-							c = "default",
-							f = "teacher_quiz_question",
-							vars = dict(
-								quiz_id = x.quiz_id,
-								question_id = x.question_id,
-								assigned = quiz_is_assigned,
-								)
-							)
-						)
-					),
-				)
-			table.append(table_row)
-	return dict(
-		add_question = add_question,
-		assign_form = assign_form,
-		delete_quiz = delete_quiz,
-		home = home,
-		name = name,
-		quiz_id = session.quiz_id_teacher,
-		table = table,
-		)
 def view_admin_dashboard():
 	session_manager(request)
 	home = get_home_link()
+	teachers = TABLE()
+	students = TABLE()
 	register_student = A(
 		"Student Admissions",
 		_href = URL(
@@ -2274,10 +2368,72 @@ def view_admin_dashboard():
 			f = "register_teacher",
 			)
 		)
+	teachers_rows = db(db.teachers.id > 0).select()
+	students_rows = db(db.students.id > 0).select()
+	if (len(teachers_rows) > 0):
+		teachers.append(
+			TR(
+				TH(
+					CENTER(
+						XML("<font color = 'red' size = 6>CURRENT INSTRUCTORS</font>")
+						),
+					_colspan = "2",
+					)
+				),
+			)
+		teachers.append(
+			TR(
+				TH(
+					B("Teacher ID"),
+					_style = "padding-right:75px",
+					),
+				TH(
+					B("Teacher Name"),
+					_style = "padding-right:75px",
+					),
+				)
+			)
+		for x in teachers_rows:
+			table_row = TR(
+				TD(x.teacher_id),
+				TD(x.name),
+				)
+			teachers.append(table_row)
+	if (len(students_rows) > 0):
+		students.append(
+			TR(
+				TH(
+					CENTER(
+						XML("<font color = 'red' size = 6>CURRENT STUDENTS</font>")
+						),
+					_colspan = "2",
+					)
+				),
+			)
+		students.append(
+			TR(
+				TH(
+					B("Student ID"),
+					_style = "padding-right:75px",
+					),
+				TH(
+					B("Student Name"),
+					_style = "padding-right:75px",
+					),
+				)
+			)
+		for x in students_rows:
+			table_row = TR(
+				TD(x.student_id),
+				TD(x.name),
+				)
+			students.append(table_row)
 	return dict(
+		home = home,
 		register_student = register_student,
 		register_teacher = register_teacher,
-		home = home,
+		students = students,
+		teachers = teachers,
 		)
 		
 # ------------------------ </PAGE RENDERING FUNCTIONS - END> ------------------------
@@ -2300,7 +2456,7 @@ page_headings = {
 	"drop_student":"Drop a Class",
 	"quiz_question_teacher_view":"View Question",
 	"quiz_submit_authentication":"Confirm Quiz Submittal",
-	"index":"Portals - Public Homepage",
+	"index":"Public Homepage",
 	"operational_error":"Error Message",
 	"register_student":"Student Registration",
 	"register_teacher":"Teacher Registration",
@@ -2354,6 +2510,39 @@ teacher_pages = [
 	"teacher_quiz",
 	"teacher_quiz_question",
 	]
+def conclude_course():
+	class_id = request.vars.class_id
+	quizzes_assigned_rows = db(db.quizzes_assigned.class_id == class_id).select()
+	for x in quizzes_assigned_rows:
+		quizzes_in_progress_rows = db(
+			(db.quizzes_in_progress.quiz_id == x.quiz_id)
+			).select(
+				db.quizzes_in_progress.quiz_id,
+				db.quizzes_in_progress.student_id,
+				distinct = True,
+				)
+		for y in quizzes_in_progress_rows:
+			grade_quiz(y.quiz_id, y.student_id)
+	classrooms_rows = db(db.classrooms.class_id == class_id).select()
+	for x in classrooms_rows:
+		x.update_record(
+			course_status = "COURSE_ENDED_FINAL_GRADE_ISSUED",
+			)
+		db.commit()
+	total_grades_rows = db(db.total_grades.class_id == class_id).select()
+	for x in total_grades_rows:
+		x.update_record(
+			course_status = "COURSE_ENDED_FINAL_GRADE_ISSUED",
+			)
+		db.commit()
+	redirect(
+		URL(
+			a = "school",
+			c = "default",
+			f = "teacher_dashboard",
+			)
+		)
+	return ()
 def create_id(role):
 	id = "ERROR"
 	try:
@@ -2403,7 +2592,6 @@ def delete_quiz():
 			a = "school",
 			c = "default",
 			f = "teacher_dashboard",
-			vars = dict(quiz_id = quiz_id),
 			)
 		)
 	return ()
@@ -2485,12 +2673,11 @@ def get_quiz_name(quiz_id):
 		else:
 			system_error("quiz should be either assigned or unassigned (ref: get_quiz_name)")
 	return (quiz_name)
-def grade_quiz():
-	quiz_id = request.vars.quiz_id
+def grade_quiz(quiz_id, student_id):
 	quizzes_in_progress_rows = db(
 		(db.quizzes_in_progress.quiz_id == quiz_id)
 		&
-		(db.quizzes_in_progress.student_id == session.student_id)
+		(db.quizzes_in_progress.student_id == student_id)
 		).select()
 	if (len(quizzes_in_progress_rows) > 0):
 		quiz_points_earned = 0
@@ -2509,7 +2696,7 @@ def grade_quiz():
 					)
 			db.quizzes_submitted.insert(
 				quiz_id = quiz_id,
-				student_id = session.student_id,
+				student_id = student_id,
 				question_id = x.question_id,
 				submitted_answer = x.current_answer,
 				)
@@ -2518,7 +2705,7 @@ def grade_quiz():
 			db.commit()
 		db.quiz_grades.insert(
 			quiz_id = quiz_id,
-			student_id = session.student_id,
+			student_id = student_id,
 			quiz_points_earned = quiz_points_earned,
 			quiz_points_max = quiz_points_max,
 			)
@@ -2529,13 +2716,13 @@ def grade_quiz():
 				classrooms_rows = db(
 					(db.classrooms.class_id == x.class_id)
 					&
-					(db.classrooms.student_id == session.student_id)
+					(db.classrooms.student_id == student_id)
 					).select()
 				if (len(classrooms_rows) == 1):
 					total_grades_rows = db(
 					(db.total_grades.class_id == x.class_id)
 					&
-					(db.total_grades.student_id == session.student_id)
+					(db.total_grades.student_id == student_id)
 						).select()
 					if (len(total_grades_rows) == 1):
 						submitted_points_earned = int(quiz_points_earned) * int(x.quiz_points)
@@ -2557,7 +2744,7 @@ def grade_quiz():
 							) * 100
 						if (percentage_grade >= GRADE_THRESHOLD_A):
 							cumulative_grade = (
-								"you have earned " 
+								"You earned " 
 								+
 								format(percentage_grade, ".2f") 
 								+
@@ -2565,7 +2752,7 @@ def grade_quiz():
 								)
 						elif (percentage_grade >= GRADE_THRESHOLD_B):
 							cumulative_grade = (
-								"you have earned " 
+								"You earned " 
 								+
 								format(percentage_grade, ".2f") 
 								+
@@ -2573,7 +2760,7 @@ def grade_quiz():
 								)
 						elif (percentage_grade >= GRADE_THRESHOLD_C):
 							cumulative_grade = (
-								"you have earned " 
+								"You earned " 
 								+
 								format(percentage_grade, ".2f") 
 								+
@@ -2581,7 +2768,7 @@ def grade_quiz():
 								)
 						elif (percentage_grade >= GRADE_THRESHOLD_D):
 							cumulative_grade = (
-								"you have earned " 
+								"You earned " 
 								+
 								format(percentage_grade, ".2f") 
 								+
@@ -2589,7 +2776,7 @@ def grade_quiz():
 								)
 						else:
 							cumulative_grade = (
-								"you have earned " 
+								"You earned " 
 								+
 								format(percentage_grade, ".2f") 
 								+
@@ -2619,13 +2806,6 @@ def grade_quiz():
 				+
 				"that should not be possible"
 				)
-		redirect(
-			URL(
-				a = "school",
-				c = "default",
-				f = "student_dashboard",
-				)
-			)
 	else:
 		system_error("required quiz records do not exist! (ref: db.quizzes_in_progress)")
 	return ()
@@ -2640,6 +2820,7 @@ def login_form():
 				_type = "text",
 				_name = "handle",
 				_style = "width:400px",
+				requires = IS_NOT_EMPTY()
 				),
 			_align = "right",
 			_style = "padding-right:400px;",
@@ -2839,6 +3020,17 @@ def session_manager(instance):
 		session.teacher_student_view = None
 	if (instance.function not in ["add_question_to_quiz", "teacher_quiz"]):
 		session.quiz_under_development = None
+	if (session.login_type == None):
+		session.admin_login = A(
+			"Admin View",
+			_href = URL(
+				a = "school",
+				c = "default",
+				f = "admin_login",
+				)
+			)
+	else:
+		session.admin_login = ""
 	return ()
 def system_error(error_message):
 	session.operational_error_token = True
