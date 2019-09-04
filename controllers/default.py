@@ -1167,6 +1167,25 @@ def student_grades():
 	student_id = request.vars.student_id
 	table = TABLE()
 	quiz_grades_rows = db(db.quiz_grades.student_id == student_id).select()
+	if (len(quiz_grades_rows) > 0):
+		table_header = TR(
+			TH(
+				"Quiz ID",
+				_style = "padding-right:75px",
+				),
+			TH(
+				"Points Earned",
+				_style = "padding-right:75px",
+				),
+			TH(
+				"Total Quiz Points",
+				_style = "padding-right:75px",
+				),
+			TH(
+				"Relative Weight of Quiz on Cummulative Grade",
+				),
+			)
+		table.append(table_header)
 	for x in quiz_grades_rows:
 		quizzes_assigned_rows = db(db.quizzes_assigned.quiz_id == x.quiz_id).select()
 		if (len(quizzes_assigned_rows) == 1):
@@ -1183,11 +1202,20 @@ def student_grades():
 								quiz_id = x.quiz_id,
 								)
 							)
-						)
+						),
+					_style = "padding-right:75px",
 					),
-				TD(x.quiz_points_earned),
-				TD(x.quiz_points_max),
-				TD(quizzes_assigned_rows[0].quiz_points),
+				TD(
+					x.quiz_points_earned,
+					_style = "padding-right:75px",
+					),
+				TD(
+					x.quiz_points_max,
+					_style = "padding-right:75px",
+					),
+				TD(
+					quizzes_assigned_rows[0].quiz_points,
+					),
 				)
 			table.append(table_row)
 		else:
